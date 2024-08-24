@@ -21,7 +21,6 @@ namespace apps::config
 
 		addComponent<ksf::comps::ksWifiConfigurator>(ledDriverDeviceName);
 		addComponent<ksf::comps::ksMqttConfigProvider>();
-		addComponent<LedDriverConfigProvider>();
 
 		return true;
 	}

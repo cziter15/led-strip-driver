@@ -14,6 +14,6 @@ using namespace apps;
 
 KSF_IMPLEMENT_APP_ROTATOR
 (
-	ledc::LedDriverApp, 
+	leddriver::LedDriverApp, 
 	config::LedDriverConfig
 )
