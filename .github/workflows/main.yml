@@ -1,0 +1,45 @@
+name: build-firmware
+on:
+  workflow_dispatch:
+  schedule:
+    - cron: '0 0 * * 0'
+#  push:
+#    paths-ignore:
+#      - '**.md'
+#      - '**.yml'
+
+jobs:
+  build-with-pio:
+    runs-on: ubuntu-latest
+    steps:
+    - uses: actions/checkout@v4
+    - name: Cache pip
+      uses: actions/cache@v4
+      with:
+        path: ~/.cache/pip
+        key: ${{ runner.os }}-pip-${{ hashFiles('**/requirements.txt') }}
+        restore-keys: |
+          ${{ runner.os }}-pip-
+    - name: Cache PlatformIO
+      uses: actions/cache@v4
+      with:
+        path: ~/.platformio
+        key: ${{ runner.os }}-${{ hashFiles('**/lockfiles') }}
+    - name: Set up Python
+      uses: actions/setup-python@v5
+      with:
+        python-version: '3.9'
+    - name: Install PlatformIO
+      run: |
+        python -m pip install --upgrade pip
+        pip install --upgrade platformio
+    - name: Build with PlatformIO
+      run: |
+        cd firmware
+        pio upgrade
+        pio run
+    - name: Deploy firmware artifact
+      uses: actions/upload-artifact@v4
+      with:
+        name: led-strip-driver-${{ github.run_id }}
+        path: firmware/.pio/build/led-strip-driver-esp12s/firmware.bin
