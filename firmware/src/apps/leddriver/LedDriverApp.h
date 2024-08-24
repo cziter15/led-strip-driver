@@ -11,7 +11,7 @@
 
 #include <ksIotFrameworkLib.h>
 
-namespace apps::leedriver
+namespace apps::leddriver
 {
 	class LedDriverApp : public ksf::ksApplication
 	{
