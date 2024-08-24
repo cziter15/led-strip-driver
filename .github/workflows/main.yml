@@ -42,4 +42,4 @@ jobs:
       uses: actions/upload-artifact@v4
       with:
         name: led-strip-driver-${{ github.run_id }}
-        path: firmware/.pio/build/led-strip-driver-esp12s/firmware.bin
+        path: firmware/.pio/build/lsd-esp12s/firmware.bin
