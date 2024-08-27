@@ -4,7 +4,7 @@
 [![Hits-of-Code](https://hitsofcode.com/github/cziter15/led-strip-driver?branch=main)](https://hitsofcode.com/github/cziter15/led-strip-driver/view?branch=main)
 [![Device Firmware](https://github.com/cziter15/led-strip-driver/actions/workflows/main.yml/badge.svg)](https://github.com/cziter15/led-strip-driver/actions/workflows/main.yml)
 
-> Simple MQTT controllable led strip driver based on ESP12-S intended to power WS2812B (max 4A, must be 3.3V logic-compatibile and have a capacitor for each LED).
+> Simple MQTT controllable led strip driver based on ESP12-S intended to power WS2812B (3.3V logic, need individual capacitor per LED)
 
 ![board](board.png)
 
