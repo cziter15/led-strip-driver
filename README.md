@@ -15,4 +15,7 @@ The hardware design is meant to be as simple as possible:
 - no additional ESD protection (only built-in)
 
 # Software
-The application is expected to feature multiple operational modes. It must include functionalities for adjusting color and brightness, in addition to supporting animations managed via MQTT to facilitate integration with home assistant. Another proposed mode is UDP, which aims to enable direct control of individual LEDs from a PC for purposes such as music visualization and other tasks requiring low latency. The core framework for this application will be ksIotFrameworkLib.
+The software is C++ based and powered by ksIotFrameworkLib and is going to:
+- support HomeAssistent over MQTT protocol
+- have multiple operational modes (breathing, snake, rainbow etc)
+- have an ability to switch to direct control (UDP based) mentioned earlier
