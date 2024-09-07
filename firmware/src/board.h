@@ -15,3 +15,5 @@
 #define ERROR_LED_PIN 12
 /* Pin number for the data signal driving the strip. */
 #define STRIP_DATA_PIN 5
+/* Number of LEDs in the strip. */
+#define STRIP_LED_NUM 30

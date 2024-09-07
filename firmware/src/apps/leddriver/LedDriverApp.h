@@ -11,6 +11,9 @@
 
 #include <ksIotFrameworkLib.h>
 
+class WiFiUDP;
+class Adafruit_NeoPixel;
+
 namespace apps::leddriver
 {
 	class LedDriverApp : public ksf::ksApplication
@@ -18,7 +21,9 @@ namespace apps::leddriver
 		protected:
 			std::weak_ptr<ksf::comps::ksLed> statusLedWp, errorLedWp;							// Weak pointer to LEDs.
 			std::unique_ptr<ksf::evt::ksEventHandle> connEventHandleSp, disEventHandleSp;		// Event handlers for connect/disconnect.
-
+			std::unique_ptr<WiFiUDP> udpPort;													// Unique pointer to UDP.
+			std::unique_ptr<Adafruit_NeoPixel> strip;											// Unique pointer to strip.
+	
 			/*
 				Called on MQTT connection established.
 			*/
@@ -28,7 +33,11 @@ namespace apps::leddriver
 				Called on MQTT connection lost.
 			*/
 			void onMqttDisconnected();
+
 		public:
+			LedDriverApp();
+			virtual ~LedDriverApp();
+
 			/*
 				Initializes LedDriverApp.
 
