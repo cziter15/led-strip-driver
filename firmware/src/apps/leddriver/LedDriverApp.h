@@ -23,6 +23,8 @@ namespace apps::leddriver
 			std::unique_ptr<ksf::evt::ksEventHandle> connEventHandleSp, disEventHandleSp;		// Event handlers for connect/disconnect.
 			std::unique_ptr<WiFiUDP> udpPort;													// Unique pointer to UDP.
 			std::unique_ptr<Adafruit_NeoPixel> strip;											// Unique pointer to strip.
+
+			uint32_t lastDataReceivedTime{25000};
 	
 			/*
 				Called on MQTT connection established.
@@ -33,6 +35,8 @@ namespace apps::leddriver
 				Called on MQTT connection lost.
 			*/
 			void onMqttDisconnected();
+
+			void fx_rainbow();
 
 		public:
 			LedDriverApp();

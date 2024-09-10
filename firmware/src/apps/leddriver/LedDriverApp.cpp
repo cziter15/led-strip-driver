@@ -73,6 +73,14 @@ namespace apps::leddriver
 			statusLedSp->setBlinking(0);
 	}
 
+	void LedDriverApp::fx_rainbow()
+	{
+		float hue(millis() % 65535);
+		for (auto i{0}; i < strip->numPixels(); i++) 
+			strip->setPixelColor(i, strip->gamma32(strip->ColorHSV(hue, 255, 255)));
+		strip->show();
+	}
+
 	bool LedDriverApp::loop()
 	{
 		if (udpPort)
@@ -81,6 +89,8 @@ namespace apps::leddriver
 			{
 				static uint8_t packetBuffer[1024];
 				auto len{udpPort->read(packetBuffer, 1024)};
+
+				lastDataReceivedTime = millis();
 
 				if (len < 2)
 					return true;
@@ -91,6 +101,7 @@ namespace apps::leddriver
 				for(int i = 2; i < len; i+=4) 
 				{
 					auto color {Adafruit_NeoPixel::Color(packetBuffer[i+1], packetBuffer[i+2], packetBuffer[i+3])};
+					//strip->setPixelColor(packetBuffer[i], strip->gamma32(color));
 					strip->setPixelColor(packetBuffer[i], color);
 				}
 
@@ -98,6 +109,9 @@ namespace apps::leddriver
 			}
 		}
 
+		if (millis() - lastDataReceivedTime > 25000)
+			fx_rainbow();
+		
 		return ksApplication::loop();
 	}
 }
