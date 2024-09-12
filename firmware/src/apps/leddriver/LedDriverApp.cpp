@@ -156,7 +156,7 @@ namespace apps::leddriver
 				{
 					auto color{Adafruit_NeoPixel::Color(packetBuffer[i+1], packetBuffer[i+2], packetBuffer[i+3])};
 					auto finalColor{ correctGamma ? Adafruit_NeoPixel::gamma32(color) : color };
-					strip->setPixelColor(packetBuffer[i], color);
+					strip->setPixelColor(packetBuffer[i], finalColor);
 				}
 
 				strip->show();
