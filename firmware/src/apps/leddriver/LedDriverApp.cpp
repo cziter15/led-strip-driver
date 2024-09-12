@@ -29,7 +29,7 @@ namespace apps::leddriver
 		addComponent<ksf::comps::ksWifiConnector>(apps::config::LedDriverConfig::ledDriverDeviceName);
 
 		/* Add MQTT components. */
-		auto mqttWp{addComponent<ksf::comps::ksMqttConnector>()};
+		mqttClientWp = addComponent<ksf::comps::ksMqttConnector>();
 		addComponent<ksf::comps::ksDevStatMqttReporter>();
 
 		/* Add LED indicator components. */
@@ -45,10 +45,11 @@ namespace apps::leddriver
 		addComponent<ksf::comps::ksDevicePortal>();
 
 		/* Bind MQTT connect/disconnect events for LED status. */
-		if (auto mqttSp{mqttWp.lock()})
+		if (auto mqttClientSp{mqttClientWp.lock()})
 		{
-			mqttSp->onConnected->registerEvent(connEventHandleSp, std::bind(&LedDriverApp::onMqttConnected, this));
-			mqttSp->onDisconnected->registerEvent(disEventHandleSp, std::bind(&LedDriverApp::onMqttDisconnected, this));
+			mqttClientSp->onConnected->registerEvent(connEventHandleSp, std::bind(&LedDriverApp::onMqttConnected, this));
+			mqttClientSp->onDisconnected->registerEvent(disEventHandleSp, std::bind(&LedDriverApp::onMqttDisconnected, this));
+			mqttClientSp->onDeviceMessage->registerEvent(msgEventHandleSp, std::bind(&LedDriverApp::onMqttMessage, this, _1, _2));
 		}
 
 		/* Start blinking status LED. */
@@ -58,7 +59,53 @@ namespace apps::leddriver
 		if (udpPort)
 			udpPort->begin(21324);
 
+		strip->clear();
+		strip->show();
+
 		return true;
+	}
+
+	void LedDriverApp::onMqttMessage(const std::string_view& topic, const std::string_view& payload)
+	{
+		if (payload.length() == 0)
+			return;
+
+		auto mqttClientSp{mqttClientWp.lock()};
+		if (!mqttClientSp)
+			return;
+
+		if (topic == "set")
+		{
+			staticColorMode.setEnabled(payload[0] == '1');
+		}
+		else if (topic == "set_rgb")
+		{
+			auto first_comma{payload.find_first_of(',')};
+			auto second_comma{payload.find_first_of(',', first_comma + 1)};
+			
+			if (first_comma == std::string_view::npos || second_comma == std::string_view::npos)
+				return;
+
+			auto str_red{payload.substr(0, first_comma)};
+			auto str_green{payload.substr(first_comma + 1, second_comma - first_comma - 1)};
+			auto str_blue{payload.substr(second_comma + 1)};
+	
+			uint8_t target_rgb[3]{0,0,0};
+			ksf::from_chars(str_red, target_rgb[0]);
+			ksf::from_chars(str_green, target_rgb[1]);
+			ksf::from_chars(str_blue, target_rgb[2]);
+			staticColorMode.setRgb(target_rgb);
+		}
+		else if (topic == "set_brightness")
+		{
+			uint8_t target_brightness{0};
+			ksf::from_chars(payload, target_brightness);
+			staticColorMode.setBrightness(target_brightness);
+		}
+		else if (topic == "set_cgamma")
+		{
+			correctGamma = payload[0] == '1';
+		}
 	}
 
 	void LedDriverApp::onMqttDisconnected()
@@ -71,18 +118,30 @@ namespace apps::leddriver
 	{
 		if (auto statusLedSp{statusLedWp.lock()})
 			statusLedSp->setBlinking(0);
-	}
 
-	void LedDriverApp::fx_rainbow()
-	{
-		float hue(millis() % 65535);
-		for (auto i{0}; i < strip->numPixels(); i++) 
-			strip->setPixelColor(i, strip->gamma32(strip->ColorHSV(hue, 255, 255)));
-		strip->show();
-	}
+		if (auto mqttClientSp{mqttClientWp.lock()})
+		{
+			mqttClientSp->publish("set_rgb", "255,255,255");
+			mqttClientSp->publish("set_brightness", "100");
+			mqttClientSp->publish("set", "0");
 
+			//mqttClientSp->subscribe("rgb_state_topic");
+			mqttClientSp->subscribe("set");
+			mqttClientSp->subscribe("set_rgb");
+			mqttClientSp->subscribe("set_brightness");
+			mqttClientSp->subscribe("set_cgamma");
+		}
+	}
 	bool LedDriverApp::loop()
 	{
+		if (staticColorMode.update())
+		{
+			auto color{ staticColorMode.getColor() };
+			auto finalColor{ correctGamma ? Adafruit_NeoPixel::gamma32(color) : color };
+			strip->fill(finalColor);
+			strip->show();
+		}
+
 		if (udpPort)
 		{
 			if (auto packetSize{udpPort->parsePacket()}; packetSize > 0)
@@ -90,27 +149,19 @@ namespace apps::leddriver
 				static uint8_t packetBuffer[1024];
 				auto len{udpPort->read(packetBuffer, 1024)};
 
-				lastDataReceivedTime = millis();
-
-				if (len < 2)
+				if (len < 2 || packetBuffer[0] != 1)
 					return true;
 
-				if (packetBuffer[0] != 1)
-					return true;
-
-				for(int i = 2; i < len; i+=4) 
+				for(auto i{2}; i < len; i+=4) 
 				{
-					auto color {Adafruit_NeoPixel::Color(packetBuffer[i+1], packetBuffer[i+2], packetBuffer[i+3])};
-					//strip->setPixelColor(packetBuffer[i], strip->gamma32(color));
+					auto color{Adafruit_NeoPixel::Color(packetBuffer[i+1], packetBuffer[i+2], packetBuffer[i+3])};
+					auto finalColor{ correctGamma ? Adafruit_NeoPixel::gamma32(color) : color };
 					strip->setPixelColor(packetBuffer[i], color);
 				}
 
 				strip->show();
 			}
 		}
-
-		if (millis() - lastDataReceivedTime > 25000)
-			fx_rainbow();
 		
 		return ksApplication::loop();
 	}
