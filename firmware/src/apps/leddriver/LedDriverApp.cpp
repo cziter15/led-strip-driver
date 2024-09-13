@@ -31,9 +31,9 @@ namespace apps::leddriver
 
 	static IRAM_ATTR void ws2812_write(uint8_t pin, uint8_t *pixels, uint32_t length) 
 	{
-		constexpr static uint32_t t0h {F_CPU / 2500001};
-		constexpr static uint32_t t1h {F_CPU / 1333001};
-		constexpr static uint32_t ttot {F_CPU / 800001};
+		constexpr static uint32_t t0h {F_CPU / 2500000};
+		constexpr static uint32_t t1h {F_CPU / 1250000};
+		constexpr static uint32_t ttot {F_CPU / 800000};
 		
 		uint8_t *p{pixels}, *end{p + length}, pixel{*p++}, mask{0x80};
 		uint32_t cycle_count{}, start_time{}, pin_mask{ 1 << pin };
