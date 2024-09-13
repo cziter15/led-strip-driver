@@ -12,17 +12,24 @@
 #include <ksIotFrameworkLib.h>
 
 class WiFiUDP;
-class Adafruit_NeoPixel;
 
 namespace apps::leddriver
 {
+	struct LedPixel
+	{
+		uint8_t green{};
+		uint8_t red{};
+		uint8_t blue{};
+	};
+
 	class LedDriverApp : public ksf::ksApplication
 	{
 		protected:
 			std::weak_ptr<ksf::comps::ksLed> statusLedWp, errorLedWp;											// Weak pointer to LEDs.
 			std::unique_ptr<ksf::evt::ksEventHandle> connEventHandleSp, disEventHandleSp, msgEventHandleSp;		// Event handlers for connect/disconnect.
 			std::unique_ptr<WiFiUDP> udpPort;																	// Unique pointer to UDP.
-			std::unique_ptr<Adafruit_NeoPixel> strip;															// Unique pointer to strip.
+
+			std::vector<LedPixel> stripPixels;		// Strip pixel buffer.
 
 			std::weak_ptr<ksf::comps::ksMqttConnector> mqttClientWp;
 
@@ -32,13 +39,13 @@ namespace apps::leddriver
 			{
 				private:
 					bool stripEnabled{false};				// Strip enabled flag.
-					uint8_t current_rgb[3]{255,255,255};	// Current color value.
-					uint8_t target_rgb[3]{255,255,255};		// Target color value.
+					LedPixel current_rgb;					// Current color value.
+					LedPixel target_rgb;					// Target color value.
 
 					uint8_t brightnessOnDisabled{100};		// Brightness before disabling the LEDs.
-					uint8_t current_brightness{0};		// Brightness multiplier.
+					uint8_t current_brightness{0};			// Brightness multiplier.
 					uint8_t target_brightness{0};			// Target brightness multiplier.
-					uint16_t blendAlpha{1024};					// Blending alpha (0 - 1024)
+					uint16_t blendAlpha{1024};				// Blending alpha (0 - 1024)
 					uint32_t prevMillis{0};					// Previous millis value.
 
 				private:
@@ -53,11 +60,13 @@ namespace apps::leddriver
 						Returns final color value.
 						@return Color RGB value.
 					*/
-				 	uint32_t getColor()
+				 	LedPixel getColor()
 					{
-						return (((uint32_t)current_rgb[0] * current_brightness / 100 << 16) |
-							(((uint32_t)current_rgb[1] * current_brightness) / 100 << 8) |
-							((uint32_t)current_rgb[2] * current_brightness) / 100);
+						return LedPixel{
+							.green = static_cast<uint8_t>(current_rgb.green * current_brightness / 100),
+							.red = static_cast<uint8_t>(current_rgb.red * current_brightness / 100),
+							.blue = static_cast<uint8_t>(current_rgb.blue * current_brightness / 100)
+						};
 					}
 
 					/*
@@ -100,9 +109,9 @@ namespace apps::leddriver
 					*/
 					void setRgb(uint8_t red, uint8_t green, uint8_t blue)
 					{
-						target_rgb[0] = red;
-						target_rgb[1] = green;
-						target_rgb[2] = blue;
+						target_rgb.red = red;
+						target_rgb.green = green;
+						target_rgb.blue = blue;
 						startBlend();
 					}
 
@@ -121,8 +130,9 @@ namespace apps::leddriver
 							blendAlpha = 1024;
 
 						/* Handle color and brightness blending. */
-						for (auto i{0}; i < 3; ++i)
-							current_rgb[i] = (current_rgb[i] * (1024 - blendAlpha) + target_rgb[i] * blendAlpha) >> 10;
+						current_rgb.red = (current_rgb.red * (1024 - blendAlpha) + target_rgb.red * blendAlpha) >> 10;
+						current_rgb.green = (current_rgb.green * (1024 - blendAlpha) + target_rgb.green * blendAlpha) >> 10;
+						current_rgb.blue = (current_rgb.blue * (1024 - blendAlpha) + target_rgb.blue * blendAlpha) >> 10;
 						current_brightness = (current_brightness * (1024 - blendAlpha) + target_brightness * blendAlpha) >> 10;
 						
 						/* Update previous millis. */

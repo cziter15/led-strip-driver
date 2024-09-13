@@ -10,7 +10,6 @@
 
 #include <ksIotFrameworkLib.h>
 #include <WiFiUdp.h>
-#include <Adafruit_NeoPixel.h>
 
 #include "board.h"
 #include "LedDriverApp.h"
@@ -22,6 +21,48 @@ namespace apps::leddriver
 {
 	LedDriverApp::LedDriverApp() = default;
 	LedDriverApp::~LedDriverApp() = default;
+
+	static IRAM_ATTR inline uint32_t _getCycleCount(void)
+	{
+		uint32_t cycles;
+		__asm__ __volatile__("rsr %0,ccount":"=a" (cycles));
+		return cycles;
+	}
+
+	static IRAM_ATTR void ws2812_write(uint8_t pin, uint8_t *pixels, uint32_t length) 
+	{
+		constexpr static uint32_t t0h {F_CPU / 2500001};
+		constexpr static uint32_t t1h {F_CPU / 1333001};
+		constexpr static uint32_t ttot {F_CPU / 800001};
+		
+		uint8_t *p{pixels}, *end{p + length}, pixel{*p++}, mask{0x80};
+		uint32_t cycle_count{}, start_time{}, pin_mask{ 1 << pin };
+
+		ets_intr_lock();
+
+		while (true)
+		{
+			auto highTime{(pixel & mask) ? t1h : t0h};
+
+			while (((cycle_count = _getCycleCount()) - start_time) < ttot);			// Wait for the previous bit to finish
+			GPIO_REG_WRITE(GPIO_OUT_W1TS_ADDRESS, pin_mask);						// Set pin high
+			
+			start_time = cycle_count; 												// Save the start time
+			while (((cycle_count = _getCycleCount()) - start_time) < highTime);		// Wait for high time to finish
+			GPIO_REG_WRITE(GPIO_OUT_W1TC_ADDRESS, pin_mask);						// Set pin low
+			
+			if (!(mask >>= 1))
+			{
+				if (p >= end)
+					break;
+
+				pixel= *p++;
+				mask = 0x80;
+			}
+		}
+		
+		ets_intr_unlock();
+	}
 
 	bool LedDriverApp::init()
 	{
@@ -38,8 +79,6 @@ namespace apps::leddriver
 
 		/* Add LED strip component. */
 		udpPort = std::make_unique<WiFiUDP>();
-		strip = std::make_unique<Adafruit_NeoPixel>(STRIP_LED_NUM, STRIP_DATA_PIN, NEO_GRB + NEO_KHZ400);
-		strip->begin();
 
 		/* Create Device Portal component. */
 		addComponent<ksf::comps::ksDevicePortal>();
@@ -59,8 +98,10 @@ namespace apps::leddriver
 		if (udpPort)
 			udpPort->begin(21324);
 
-		strip->clear();
-		strip->show();
+		stripPixels.resize(STRIP_LED_NUM);
+
+		pinMode(STRIP_DATA_PIN, OUTPUT);
+		digitalWrite(STRIP_DATA_PIN, LOW);
 
 		return true;
 	}
@@ -134,15 +175,17 @@ namespace apps::leddriver
 	}
 	bool LedDriverApp::loop()
 	{
+		bool sendPixels{false};
+		
 		if (staticColorMode.update())
 		{
 			auto color{ staticColorMode.getColor() };
-			auto finalColor{ correctGamma ? Adafruit_NeoPixel::gamma32(color) : color };
-			strip->fill(finalColor);
-			strip->show();
-		}
+			for (auto& pix : stripPixels)
+				pix = color;
 
-		if (udpPort)
+			sendPixels = true;
+		} 
+		else if (udpPort)
 		{
 			if (auto packetSize{udpPort->parsePacket()}; packetSize > 0)
 			{
@@ -153,16 +196,15 @@ namespace apps::leddriver
 					return true;
 
 				for(auto i{2}; i < len; i+=4) 
-				{
-					auto color{Adafruit_NeoPixel::Color(packetBuffer[i+1], packetBuffer[i+2], packetBuffer[i+3])};
-					auto finalColor{ correctGamma ? Adafruit_NeoPixel::gamma32(color) : color };
-					strip->setPixelColor(packetBuffer[i], finalColor);
-				}
+					stripPixels[packetBuffer[i]] = {packetBuffer[i+2], packetBuffer[i+1], packetBuffer[i+3]};
 
-				strip->show();
+				sendPixels = true;
 			}
 		}
 		
+		if (sendPixels)
+			ws2812_write(STRIP_DATA_PIN, (uint8_t*)&stripPixels[0], stripPixels.size()*sizeof(LedPixel));
+
 		return ksApplication::loop();
 	}
 }
