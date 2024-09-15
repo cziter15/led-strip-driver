@@ -28,5 +28,7 @@ The software is C++ based and powered by ksIotFrameworkLib and is going to:
 - make use of RMT peripheral to drive LEDs
 
 # Inspiration
-https://github.com/scottlawsonbc/audio-reactive-led-strip/tree/master
-https://github.com/Lucas-Bruder/ESP32_LED_STRIP
+- https://github.com/scottlawsonbc/audio-reactive-led-strip/tree/master
+- https://github.com/Lucas-Bruder/ESP32_LED_STRIP
+- https://github.com/LedFx/LedFx
+- https://github.com/adafruit/Adafruit_NeoPixel
