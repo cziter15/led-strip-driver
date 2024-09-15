@@ -96,6 +96,8 @@ namespace apps::leddriver
 
 		pinMode(STRIP_DATA_PIN, OUTPUT);
 		digitalWrite(STRIP_DATA_PIN, LOW);
+		ets_delay_us(50);
+		ws2812_write(STRIP_DATA_PIN, (uint8_t*)&stripPixels[0], stripPixels.size()*sizeof(LedPixel));
 
 		return true;
 	}

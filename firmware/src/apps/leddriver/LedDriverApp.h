@@ -17,9 +17,9 @@ namespace apps::leddriver
 {
 	struct LedPixel
 	{
-		uint8_t green{255};
-		uint8_t red{255};
-		uint8_t blue{255};
+		uint8_t green{};
+		uint8_t red{};
+		uint8_t blue{};
 	};
 
 	class LedDriverApp : public ksf::ksApplication
@@ -37,9 +37,8 @@ namespace apps::leddriver
 			{
 				private:
 					bool stripEnabled{false};				// Strip enabled flag.
-					LedPixel current_rgb;					// Current color value.
-					LedPixel target_rgb;					// Target color value.
-
+					LedPixel current_rgb{255,255,255};		// Current color value.
+					LedPixel target_rgb{255,255,255};		// Target color value.
 					uint8_t brightnessOnDisabled{100};		// Brightness before disabling the LEDs.
 					uint8_t current_brightness{0};			// Brightness multiplier.
 					uint8_t target_brightness{0};			// Target brightness multiplier.
