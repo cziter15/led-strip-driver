@@ -25,7 +25,6 @@ The software is C++ based and powered by ksIotFrameworkLib and is going to:
 - support HomeAssistent over MQTT protocol
 - have multiple operational modes (breathing, snake, rainbow etc)
 - have an ability to switch to direct control (UDP based) mentioned earlier
-- make use of RMT peripheral to drive LEDs
 
 # Inspiration
 - https://github.com/scottlawsonbc/audio-reactive-led-strip/tree/master
