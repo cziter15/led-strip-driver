@@ -1,7 +1,7 @@
 /*
- *	Copyright (c) 2021-2023, Krzysztof Strehlau
+ *	Copyright (c) 2021-2024, Krzysztof Strehlau
  *
- *	This file is part of the Energy Monitor firmware.
+ *	This file is part of the led strip driver firmware.
  *	All licensing information can be found inside LICENSE.md file.
  *
  *	https://github.com/cziter15/led-strip-driver/blob/master/LICENSE

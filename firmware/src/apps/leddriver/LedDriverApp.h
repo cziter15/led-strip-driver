@@ -1,7 +1,7 @@
 /*
- *	Copyright (c) 2021-2023, Krzysztof Strehlau
+ *	Copyright (c) 2021-2024, Krzysztof Strehlau
  *
- *	This file is part of the Energy Monitor firmware.
+ *	This file is part of the led strip driver firmware.
  *	All licensing information can be found inside LICENSE.md file.
  *
  *	https://github.com/cziter15/led-strip-driver/blob/master/LICENSE
@@ -28,9 +28,7 @@ namespace apps::leddriver
 			std::weak_ptr<ksf::comps::ksLed> statusLedWp, errorLedWp;											// Weak pointer to LEDs.
 			std::unique_ptr<ksf::evt::ksEventHandle> connEventHandleSp, disEventHandleSp, msgEventHandleSp;		// Event handlers for connect/disconnect.
 			std::unique_ptr<WiFiUDP> udpPort;																	// Unique pointer to UDP.
-
-			std::vector<LedPixel> stripPixels;		// Strip pixel buffer.
-
+			std::vector<LedPixel> stripPixels;																	// Strip pixel buffer.
 			std::weak_ptr<ksf::comps::ksMqttConnector> mqttClientWp;
 
 			bool correctGamma{false};

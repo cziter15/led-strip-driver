@@ -1,12 +1,11 @@
 /*
- *	Copyright (c) 2024, Krzysztof Strehlau
+ *	Copyright (c) 2021-2024, Krzysztof Strehlau
  *
- *	This file is part of the Energy Monitor firmware.
+ *	This file is part of the led strip driver firmware.
  *	All licensing information can be found inside LICENSE.md file.
  *
  *	https://github.com/cziter15/led-strip-driver/blob/master/LICENSE
  */
-
 
 #include <ksIotFrameworkLib.h>
 #include <WiFiUdp.h>
@@ -28,39 +27,34 @@ namespace apps::leddriver
 		__asm__ __volatile__("rsr %0,ccount":"=a" (cycles));
 		return cycles;
 	}
-
-	static IRAM_ATTR void ws2812_write(uint8_t pin, uint8_t *pixels, uint32_t length) 
+	IRAM_ATTR void ws2812_write(uint8_t pin, uint8_t *pixels, uint32_t length) 
 	{
-		constexpr static uint32_t t0h {F_CPU / 2500000};
-		constexpr static uint32_t t1h {F_CPU / 1250000};
-		constexpr static uint32_t ttot {F_CPU / 800000};
-		
-		uint8_t *p{pixels}, *end{p + length}, pixel{*p++}, mask{0x80};
-		uint32_t cycle_count{}, start_time{}, pin_mask{ 1 << pin };
+		#define CYCLES_T0H  (F_CPU / 2000000) // 0.5uS
+		#define CYCLES_T1H  (F_CPU /  833333) // 1.2us
+		#define CYCLES      (F_CPU /  400000) // 2.5us per bit
 
+		uint32_t t{}, c{}, time0{CYCLES_T0H}, time1{CYCLES_T1H}, period{CYCLES}, startTime{0}, pinMask(_BV(pin));
+		uint8_t *p{pixels}, *end{p + length}, pix{*p++}, mask{0x80};
 		ets_intr_lock();
-
-		while (true)
+		for(t = time0;; t = time0)
 		{
-			auto highTime{(pixel & mask) ? t1h : t0h};
+			if(pix & mask) 
+				t = time1;
+			while(((c = _getCycleCount()) - startTime) < period);
+			GPIO_REG_WRITE(GPIO_OUT_W1TS_ADDRESS, pinMask);
+			startTime = c;
+			while(((c = _getCycleCount()) - startTime) < t);
+			GPIO_REG_WRITE(GPIO_OUT_W1TC_ADDRESS, pinMask);
 
-			while (((cycle_count = _getCycleCount()) - start_time) < ttot);			// Wait for the previous bit to finish
-			GPIO_REG_WRITE(GPIO_OUT_W1TS_ADDRESS, pin_mask);						// Set pin high
-			
-			start_time = cycle_count; 												// Save the start time
-			while (((cycle_count = _getCycleCount()) - start_time) < highTime);		// Wait for high time to finish
-			GPIO_REG_WRITE(GPIO_OUT_W1TC_ADDRESS, pin_mask);						// Set pin low
-			
-			if (!(mask >>= 1))
+			if(!(mask >>= 1))
 			{
-				if (p >= end)
+				if(p >= end)
 					break;
-
-				pixel= *p++;
+				pix  = *p++;
 				mask = 0x80;
 			}
 		}
-		
+		while((_getCycleCount() - startTime) < period);
 		ets_intr_unlock();
 	}
 
