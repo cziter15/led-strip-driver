@@ -17,9 +17,9 @@ namespace apps::leddriver
 {
 	struct LedPixel
 	{
-		uint8_t green{};
-		uint8_t red{};
-		uint8_t blue{};
+		uint8_t green{255};
+		uint8_t red{255};
+		uint8_t blue{255};
 	};
 
 	class LedDriverApp : public ksf::ksApplication
@@ -114,6 +114,15 @@ namespace apps::leddriver
 					}
 
 					/*
+						Returns whether strip is enabled.
+						@return Strip enabled flag.
+					*/
+					bool getEnabled() const
+					{
+						return stripEnabled;
+					}
+
+					/*
 						Update color and brightness.
 					*/
 					bool update()
@@ -156,6 +165,12 @@ namespace apps::leddriver
 				@param payload Payload.
 			*/
 			void onMqttMessage(const std::string_view& topic, const std::string_view& payload);
+
+			/*
+				Update strip data.
+				@return True if pixels should be updated, false otherwise.
+			*/
+			bool updateStripData();
 
 		public:
 			/*

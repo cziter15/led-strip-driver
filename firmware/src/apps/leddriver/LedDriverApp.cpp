@@ -167,36 +167,40 @@ namespace apps::leddriver
 			mqttClientSp->subscribe("set_cgamma");
 		}
 	}
-	bool LedDriverApp::loop()
+
+	bool LedDriverApp::updateStripData()
 	{
-		bool sendPixels{false};
-		
 		if (staticColorMode.update())
 		{
 			auto color{ staticColorMode.getColor() };
 			for (auto& pix : stripPixels)
 				pix = color;
-
-			sendPixels = true;
+			return true;
 		} 
-		else if (udpPort)
+
+		if (!udpPort || !staticColorMode.getEnabled())
+			return false;
+
+		if (auto packetSize{udpPort->parsePacket()}; packetSize > 0)
 		{
-			if (auto packetSize{udpPort->parsePacket()}; packetSize > 0)
-			{
-				static uint8_t packetBuffer[1024];
-				auto len{udpPort->read(packetBuffer, 1024)};
+			static uint8_t packetBuffer[1024];
+			auto len{udpPort->read(packetBuffer, 1024)};
 
-				if (len < 2 || packetBuffer[0] != 1)
-					return true;
+			if (len < 2 || packetBuffer[0] != 1)
+				return true;
 
-				for(auto i{2}; i < len; i+=4) 
-					stripPixels[packetBuffer[i]] = {packetBuffer[i+2], packetBuffer[i+1], packetBuffer[i+3]};
+			for(auto i{2}; i < len; i+=4) 
+				stripPixels[packetBuffer[i]] = {packetBuffer[i+2], packetBuffer[i+1], packetBuffer[i+3]};
 
-				sendPixels = true;
-			}
+			return true;
 		}
-		
-		if (sendPixels)
+
+		return false;
+	}
+
+	bool LedDriverApp::loop()
+	{
+		if (updateStripData())
 			ws2812_write(STRIP_DATA_PIN, (uint8_t*)&stripPixels[0], stripPixels.size()*sizeof(LedPixel));
 
 		return ksApplication::loop();
