@@ -4,7 +4,7 @@
 [![Hits-of-Code](https://hitsofcode.com/github/cziter15/led-strip-driver?branch=main)](https://hitsofcode.com/github/cziter15/led-strip-driver/view?branch=main)
 [![Device Firmware](https://github.com/cziter15/led-strip-driver/actions/workflows/main.yml/badge.svg)](https://github.com/cziter15/led-strip-driver/actions/workflows/main.yml)
 
-MQTT controllable WS2812 strip driver based on ESP12-S
+UDP/MQTT driven WS2812 strip driver based on ESP12-S (ESP8266 chip)
 
 ![board](board.png)
 
