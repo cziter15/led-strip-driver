@@ -13,6 +13,8 @@ In the past, without experience on printed circuit boards (PCBs) design, I devel
 
 Currently, I aim to revitalize this project to illuminate my desk. To prevent interference, I have opted for a four-layer PCB, which is quite affordable these days. While a two-layer design is feasible, I see no reason not to utilize a four-layer configuration if the cost remains the same.
 
+https://github.com/user-attachments/assets/4b8534d4-5899-43b4-8f51-20a2302eb0c3
+
 # Hardware
 The hardware design is meant to be as simple as possible:
 
