@@ -29,7 +29,7 @@ The software is C++ based and powered by ksIotFrameworkLib and is going to:
 - have an ability to switch to direct control (UDP based) mentioned earlier
 
 # Inspiration
-- https://github.com/scottlawsonbc/audio-reactive-led-strip/tree/master
+- https://github.com/scottlawsonbc/audio-reactive-led-strip
 - https://github.com/Lucas-Bruder/ESP32_LED_STRIP
 - https://github.com/LedFx/LedFx
 - https://github.com/adafruit/Adafruit_NeoPixel
