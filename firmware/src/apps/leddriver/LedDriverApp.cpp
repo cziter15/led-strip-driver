@@ -21,13 +21,33 @@ namespace apps::leddriver
 	LedDriverApp::LedDriverApp() = default;
 	LedDriverApp::~LedDriverApp() = default;
 
+	static const uint8_t IRAM_ATTR gamma8[] = 
+	{
+		0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0,
+		0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 1, 1, 1, 1,
+		1, 1, 1, 1, 1, 1, 1, 1, 1, 2, 2, 2, 2, 2, 2, 2,
+		2, 3, 3, 3, 3, 3, 3, 3, 4, 4, 4, 4, 4, 5, 5, 5,
+		5, 6, 6, 6, 6, 7, 7, 7, 7, 8, 8, 8, 9, 9, 9, 10,
+		10, 10, 11, 11, 11, 12, 12, 13, 13, 13, 14, 14, 15, 15, 16, 16,
+		17, 17, 18, 18, 19, 19, 20, 20, 21, 21, 22, 22, 23, 24, 24, 25,
+		25, 26, 27, 27, 28, 29, 29, 30, 31, 32, 32, 33, 34, 35, 35, 36,
+		37, 38, 39, 39, 40, 41, 42, 43, 44, 45, 46, 47, 48, 49, 50, 50,
+		51, 52, 54, 55, 56, 57, 58, 59, 60, 61, 62, 63, 64, 66, 67, 68,
+		69, 70, 72, 73, 74, 75, 77, 78, 79, 81, 82, 83, 85, 86, 87, 89,
+		90, 92, 93, 95, 96, 98, 99,101,102,104,105,107,109,110,112,114,
+		115,117,119,120,122,124,126,127,129,131,133,135,137,138,140,142,
+		144,146,148,150,152,154,156,158,160,162,164,167,169,171,173,175,
+		177,180,182,184,186,189,191,193,196,198,200,203,205,208,210,213,
+		215,218,220,223,225,228,231,233,236,239,241,244,247,249,252,255 
+	};
+
 	static IRAM_ATTR inline uint32_t _getCycleCount(void)
 	{
 		uint32_t cycles;
 		__asm__ __volatile__("rsr %0,ccount":"=a" (cycles));
 		return cycles;
 	}
-	IRAM_ATTR void ws2812_write(uint8_t pin, uint8_t *pixels, uint32_t length) 
+	IRAM_ATTR void ws2812_write(bool useGamma8, uint8_t pin, uint8_t *pixels, uint32_t length) 
 	{
 		#define CYCLES_T0H  (F_CPU / 2000000) // 0.5uS
 		#define CYCLES_T1H  (F_CPU /  833333) // 1.2us
@@ -38,8 +58,8 @@ namespace apps::leddriver
 		ets_intr_lock();
 		for(t = time0;; t = time0)
 		{
-			if(pix & mask) 
-				t = time1;
+			t = (useGamma8 ? gamma8[pix] : pix) & mask ? time1 : time0;
+			
 			while(((c = _getCycleCount()) - startTime) < period);
 			GPIO_REG_WRITE(GPIO_OUT_W1TS_ADDRESS, pinMask);
 			startTime = c;
@@ -97,7 +117,7 @@ namespace apps::leddriver
 		pinMode(STRIP_DATA_PIN, OUTPUT);
 		digitalWrite(STRIP_DATA_PIN, LOW);
 		ets_delay_us(50);
-		ws2812_write(STRIP_DATA_PIN, (uint8_t*)&stripPixels[0], stripPixels.size()*sizeof(LedPixel));
+		ws2812_write(correctGamma, STRIP_DATA_PIN, (uint8_t*)&stripPixels[0], stripPixels.size()*sizeof(LedPixel));
 
 		return true;
 	}
@@ -191,7 +211,7 @@ namespace apps::leddriver
 			if (len < 2 || packetBuffer[0] != 1)
 				return true;
 
-			for(auto i{2}; i < len; i+=4) 
+			for (auto i{2}; i < len; i+=4) 
 				stripPixels[packetBuffer[i]] = {packetBuffer[i+2], packetBuffer[i+1], packetBuffer[i+3]};
 
 			return true;
@@ -203,7 +223,7 @@ namespace apps::leddriver
 	bool LedDriverApp::loop()
 	{
 		if (updateStripData())
-			ws2812_write(STRIP_DATA_PIN, (uint8_t*)&stripPixels[0], stripPixels.size()*sizeof(LedPixel));
+			ws2812_write(correctGamma, STRIP_DATA_PIN, (uint8_t*)&stripPixels[0], stripPixels.size()*sizeof(LedPixel));
 
 		return ksApplication::loop();
 	}
