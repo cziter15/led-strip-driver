@@ -31,7 +31,7 @@ namespace apps::leddriver
 			std::vector<LedPixel> stripPixels;																	// Strip pixel buffer.
 			std::weak_ptr<ksf::comps::ksMqttConnector> mqttClientWp;
 
-			bool correctGamma{false};
+			bool correctGamma{true}; // Correct gamma flag.
 
 			class StaticColorMode
 			{
