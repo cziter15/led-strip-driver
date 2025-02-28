@@ -10,6 +10,7 @@
 #pragma once
 
 #include <ksIotFrameworkLib.h>
+#include <ESP8266WiFi.h>
 
 class WiFiUDP;
 
@@ -81,6 +82,7 @@ namespace apps::leddriver
 							return;
 
 						stripEnabled = enabled;
+						WiFi.setSleep(!enabled);
 
 						if (stripEnabled)
 						{
