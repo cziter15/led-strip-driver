@@ -45,7 +45,7 @@ namespace apps::leddriver
 					uint8_t target_brightness{0};			// Target brightness multiplier.
 					uint16_t blendAlpha{1024};				// Blending alpha (0 - 1024)
 					uint32_t startBlendTime{0};				// Time when blend started
-					uint32_t blendDuration{300};			// Duration of blend in milliseconds (300ms default)
+					uint32_t blendDuration{500};			// Duration of blend in milliseconds (500ms default)
 					bool needsUpdate{false};				// Flag to indicate if update is needed
 
 					void startBlend()
@@ -148,7 +148,8 @@ namespace apps::leddriver
 						uint32_t elapsedTime = currentTime - startBlendTime;
 						
 						/* Ensure we don't exceed the blend duration */
-						if (elapsedTime >= blendDuration) {
+						if (elapsedTime >= blendDuration) 
+						{
 							/* If blend is complete, set current values to target values directly */
 							current_rgb = target_rgb;
 							current_brightness = target_brightness;
