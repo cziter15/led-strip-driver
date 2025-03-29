@@ -47,26 +47,15 @@ namespace apps::leddriver
 		__asm__ __volatile__("rsr %0,ccount":"=a" (cycles));
 		return cycles;
 	}
-
 	IRAM_ATTR void ws2812_write(bool useGamma8, uint8_t pin, uint8_t *pixels, uint32_t length) 
 	{
-		#define CYCLES_T0H  (F_CPU / 2500000) // Changed from 2000000 to 2500000 (0.4µs instead of 0.5µs)
-		#define CYCLES_T1H  (F_CPU /  833333) // 1.2µs
-		#define CYCLES      (F_CPU /  400000) // 2.5µs per bit
-		#define RESET_TIME  50 // 50µs reset time
+		#define CYCLES_T0H  (F_CPU / 2000000) // 0.5uS
+		#define CYCLES_T1H  (F_CPU /  833333) // 1.2us
+		#define CYCLES      (F_CPU /  400000) // 2.5us per bit
 
 		uint32_t t{}, c{}, time0{CYCLES_T0H}, time1{CYCLES_T1H}, period{CYCLES}, startTime{0}, pinMask(_BV(pin));
 		uint8_t *p{pixels}, *end{p + length}, pix{*p++}, mask{0x80};
-		
-		// Make sure interrupts are disabled during the entire operation
 		ets_intr_lock();
-		
-		// Reset line to known state
-		GPIO_REG_WRITE(GPIO_OUT_W1TC_ADDRESS, pinMask);
-		ets_delay_us(1);
-		
-		startTime = _getCycleCount();
-		
 		for(t = time0;; t = time0)
 		{
 			t = (useGamma8 ? gamma8[pix] : pix) & mask ? time1 : time0;
@@ -85,9 +74,7 @@ namespace apps::leddriver
 				mask = 0x80;
 			}
 		}
-		
-		// Ensure reset time
-		ets_delay_us(RESET_TIME);
+		while((_getCycleCount() - startTime) < period);
 		ets_intr_unlock();
 	}
 
@@ -213,30 +200,21 @@ namespace apps::leddriver
 			return true;
 		} 
 
-		if (!udpPort || staticColorMode.getEnabled())
+		if (!udpPort || !staticColorMode.getEnabled())
 			return false;
 
 		if (auto packetSize{udpPort->parsePacket()}; packetSize > 0)
 		{
 			static uint8_t packetBuffer[1024];
-			auto len{udpPort->read(packetBuffer, sizeof(packetBuffer))};
+			auto len{udpPort->read(packetBuffer, 1024)};
 
 			if (len < 2 || packetBuffer[0] != 1)
-				return false;  // Changed from 'return true' to prevent sending incomplete data
+				return true;
 
-			// Make sure we don't exceed the strip length
-			uint16_t maxIndex{0};
 			for (auto i{2}; i < len; i+=4) 
-			{
-				uint8_t pixelIndex = packetBuffer[i];
-				if (pixelIndex < stripPixels.size()) 
-				{
-					stripPixels[pixelIndex] = {packetBuffer[i+2], packetBuffer[i+1], packetBuffer[i+3]};
-					maxIndex = std::max(maxIndex, static_cast<uint16_t>(pixelIndex));
-				}
-			}
+				stripPixels[packetBuffer[i]] = {packetBuffer[i+2], packetBuffer[i+1], packetBuffer[i+3]};
 
-			return maxIndex > 0;  // Only return true if we actually updated pixels
+			return true;
 		}
 
 		return false;
@@ -244,16 +222,8 @@ namespace apps::leddriver
 
 	bool LedDriverApp::loop()
 	{
-		// Only update LEDs if necessary to reduce flickering
-		static unsigned long lastUpdateTime = 0;
-		unsigned long currentTime = millis();
-		
-		// Limit updates to a maximum of 50 fps to avoid flickering from too frequent updates
-		if (currentTime - lastUpdateTime >= 20 || updateStripData()) 
-		{
-			lastUpdateTime = currentTime;
+		if (updateStripData())
 			ws2812_write(correctGamma, STRIP_DATA_PIN, (uint8_t*)&stripPixels[0], stripPixels.size()*sizeof(LedPixel));
-		}
 
 		return ksApplication::loop();
 	}

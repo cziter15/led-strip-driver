@@ -10,7 +10,6 @@
 #pragma once
 
 #include <ksIotFrameworkLib.h>
-#include <ESP8266WiFi.h>
 
 class WiFiUDP;
 
@@ -32,7 +31,7 @@ namespace apps::leddriver
 			std::vector<LedPixel> stripPixels;																	// Strip pixel buffer.
 			std::weak_ptr<ksf::comps::ksMqttConnector> mqttClientWp;
 
-			bool correctGamma{true}; // Correct gamma flag.
+			bool correctGamma{false};
 
 			class StaticColorMode
 			{
@@ -44,15 +43,13 @@ namespace apps::leddriver
 					uint8_t current_brightness{0};			// Brightness multiplier.
 					uint8_t target_brightness{0};			// Target brightness multiplier.
 					uint16_t blendAlpha{1024};				// Blending alpha (0 - 1024)
-					uint32_t startBlendTime{0};				// Time when blend started
-					uint32_t blendDuration{500};			// Duration of blend in milliseconds (500ms default)
-					bool needsUpdate{false};				// Flag to indicate if update is needed
+					uint32_t prevMillis{0};					// Previous millis value.
 
+				private:
 					void startBlend()
 					{
 						blendAlpha = 0;
-						startBlendTime = millis();
-						needsUpdate = true;
+						prevMillis = millis();
 					}
 
 				public:
@@ -60,12 +57,12 @@ namespace apps::leddriver
 						Returns final color value.
 						@return Color RGB value.
 					*/
-					LedPixel getColor()
+				 	LedPixel getColor()
 					{
 						return LedPixel{
-							.green = static_cast<uint8_t>((static_cast<uint16_t>(current_rgb.green) * current_brightness) / 100),
-							.red = static_cast<uint8_t>((static_cast<uint16_t>(current_rgb.red) * current_brightness) / 100),
-							.blue = static_cast<uint8_t>((static_cast<uint16_t>(current_rgb.blue) * current_brightness) / 100)
+							.green = static_cast<uint8_t>(current_rgb.green * current_brightness / 100),
+							.red = static_cast<uint8_t>(current_rgb.red * current_brightness / 100),
+							.blue = static_cast<uint8_t>(current_rgb.blue * current_brightness / 100)
 						};
 					}
 
@@ -84,7 +81,6 @@ namespace apps::leddriver
 							return;
 
 						stripEnabled = enabled;
-						WiFi.setSleep(!enabled);
 
 						if (stripEnabled)
 						{
@@ -126,52 +122,27 @@ namespace apps::leddriver
 					}
 
 					/*
-						Set blending duration
-						@param duration Duration in milliseconds
-					*/
-					void setBlendDuration(uint32_t duration)
-					{
-						blendDuration = duration;
-					}
-
-					/*
 						Update color and brightness.
 					*/
 					bool update()
 					{
-						/* Check if we need an update */
-						if (!needsUpdate)
+						/* Check if we should blend. */
+						if (blendAlpha >= 1024)
 							return false;
 
-						/* Calculate blend alpha based on elapsed time */
-						auto currentTime = millis();
-						uint32_t elapsedTime = currentTime - startBlendTime;
-						
-						/* Ensure we don't exceed the blend duration */
-						if (elapsedTime >= blendDuration) 
-						{
-							/* If blend is complete, set current values to target values directly */
-							current_rgb = target_rgb;
-							current_brightness = target_brightness;
+						/* Increase blend alpha. */
+						auto timeNow{millis()};
+						if (blendAlpha += timeNow - prevMillis; blendAlpha > 1024)
 							blendAlpha = 1024;
-							needsUpdate = false;
-							return true;
-						}
+
+						/* Handle color and brightness blending. */
+						current_rgb.red = (current_rgb.red * (1024 - blendAlpha) + target_rgb.red * blendAlpha) >> 10;
+						current_rgb.green = (current_rgb.green * (1024 - blendAlpha) + target_rgb.green * blendAlpha) >> 10;
+						current_rgb.blue = (current_rgb.blue * (1024 - blendAlpha) + target_rgb.blue * blendAlpha) >> 10;
+						current_brightness = (current_brightness * (1024 - blendAlpha) + target_brightness * blendAlpha) >> 10;
 						
-						/* Linear interpolation based on time */
-						blendAlpha = (elapsedTime * 1024) / blendDuration;
-						
-						/* Ensure blend alpha is valid */
-						blendAlpha = min(uint16_t(1024), blendAlpha);
-						
-						/* Perform blending with overflow protection */
-						uint32_t invAlpha = 1024 - blendAlpha;
-						
-						current_rgb.red = static_cast<uint8_t>((current_rgb.red * invAlpha + target_rgb.red * blendAlpha) >> 10);
-						current_rgb.green = static_cast<uint8_t>((current_rgb.green * invAlpha + target_rgb.green * blendAlpha) >> 10);
-						current_rgb.blue = static_cast<uint8_t>((current_rgb.blue * invAlpha + target_rgb.blue * blendAlpha) >> 10);
-						current_brightness = static_cast<uint8_t>((current_brightness * invAlpha + target_brightness * blendAlpha) >> 10);
-						
+						/* Update previous millis. */
+						prevMillis = timeNow;
 						return true;
 					}
 			} staticColorMode;
