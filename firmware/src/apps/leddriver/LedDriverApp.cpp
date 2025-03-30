@@ -121,7 +121,7 @@ namespace apps::leddriver
 
 		/* Disable GPIO2 for now (LED) */
 		pinMode(2, OUTPUT);
-		digitalWrite(2, LOW);
+		digitalWrite(2, HIGH);
 
 		return true;
 	}
