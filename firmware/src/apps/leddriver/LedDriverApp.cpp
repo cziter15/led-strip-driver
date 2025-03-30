@@ -112,12 +112,16 @@ namespace apps::leddriver
 		if (udpPort)
 			udpPort->begin(21324);
 
+		/* Initialize LED strip. */
 		stripPixels.resize(STRIP_LED_NUM);
-
 		pinMode(STRIP_DATA_PIN, OUTPUT);
 		digitalWrite(STRIP_DATA_PIN, LOW);
 		ets_delay_us(50);
 		ws2812_write(correctGamma, STRIP_DATA_PIN, (uint8_t*)&stripPixels[0], stripPixels.size()*sizeof(LedPixel));
+
+		/* Disable GPIO2 for now (LED) */
+		pinMode(2, OUTPUT);
+		digitalWrite(2, LOW);
 
 		return true;
 	}
